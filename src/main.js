@@ -468,7 +468,10 @@ function plotUnder(e, p) {
 engine.canvas.addEventListener('pointerup', (e) => {
   if (e.button !== 0 || !rig.wasClick) return
   const p = ndc(e)
-  const agent = colony.pick(p.x, p.y, p.aspect)
+  // The default radius (0.075 NDC) is about 15px on a phone, where a fingertip covers 40.
+  // Without widening it, hitting an astronaut by touch is a matter of luck. Hover above keeps
+  // the narrow radius: it only exists where there is a cursor, and there the aim is exact.
+  const agent = colony.pick(p.x, p.y, p.aspect, e.pointerType === 'touch' ? 0.13 : undefined)
   if (agent) {
     select(agent.id, {})
     return

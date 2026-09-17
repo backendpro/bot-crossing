@@ -846,8 +846,10 @@ export class Colony {
 
   // ── interaction ─────────────────────────────────────────────────────────────────────
 
-  pick(ndcX, ndcY, aspect) {
-    return this.astronauts.pick(this.camera, ndcX, ndcY, aspect)
+  pick(ndcX, ndcY, aspect, maxDist) {
+    return maxDist === undefined
+      ? this.astronauts.pick(this.camera, ndcX, ndcY, aspect)
+      : this.astronauts.pick(this.camera, ndcX, ndcY, aspect, maxDist)
   }
 
   agentFor(id) {

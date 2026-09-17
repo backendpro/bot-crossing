@@ -125,6 +125,11 @@ export class CameraRig {
     this._pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
     this._moved = 0
     this._zoom = null
+    // The slop that separates a click from a drag was measured with a mouse, which releases
+    // within a pixel or two of where it pressed. A finger does not: the contact patch rolls
+    // as it leaves the glass, so at 6px nearly every tap was reclassified as a pan and the
+    // selection below was never even attempted.
+    this._clickSlop = e.pointerType === 'touch' ? 16 : 6
 
     if (this._pointers.size === 2) {
       this._mode = 'pinch'
@@ -265,7 +270,7 @@ export class CameraRig {
 
   /** True when the pointer went down and up without really moving — a click, not a drag. */
   get wasClick() {
-    return this._moved < 6
+    return this._moved < (this._clickSlop ?? 6)
   }
 
   /** Glide the view to a world point without yanking it — used when you pick an astronaut. */

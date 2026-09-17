@@ -91,6 +91,21 @@ body {
   pointer-events: none !important;
 }
 
+/* Sits outside `.hud` so that hiding the UI cannot take it along. Deliberately faint:
+   it is a way back, not a control. */
+.btn.unhide {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 40;
+  opacity: 0.4;
+  pointer-events: auto;
+}
+
+.btn.unhide:hover {
+  opacity: 1;
+}
+
 .panel {
   background: var(--panel);
   backdrop-filter: blur(18px) saturate(1.3);
