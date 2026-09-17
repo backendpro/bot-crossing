@@ -292,6 +292,11 @@ function select(id, { fly = false } = {}) {
   colony.astronauts.setSelected(agent)
   const thread = threads.find((t) => t.id === id) || agent.thread
   hud.setSelection(agent, thread)
+  // Picking somebody is asking what they are doing, and the answer lives in the card. With
+  // the chrome dismissed there is nowhere for that card to appear, so the tap reads as
+  // nothing happening at all — the selection is real, it is just invisible. Bring the UI
+  // back with it: dismissing is for watching the colony, not for interrogating it.
+  hud.toggleUi(true)
   // Picking somebody is also picking the zone they are standing on: the sidebar follows.
   if (thread?.project && colony.plots.has(thread.project)) selectedProject = thread.project
   syncProject()
