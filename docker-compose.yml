@@ -1,0 +1,52 @@
+# Self-hosted deployment: the colony runs as a service and is read from another device.
+#
+# Three things here are load-bearing and none of them are conveniences:
+#
+#   pid: host      the only way "running right now" can work. Live sessions are found by
+#                  signalling the pids a harness registers on disk (kill(pid, 0)); inside its
+#                  own pid namespace a container sees none of them, and every astronaut
+#                  potters about as though nothing were ever happening.
+#   user: 1000     the same uid that owns those processes. A different uid gets EPERM from the
+#                  signal, which reads as "gone" — the same dead colony, by another route.
+#   :ro            the harness data is only ever read. data/colony.json is the one file this
+#                  project writes, and it lives in the volume below.
+name: bot-crossing
+
+services:
+  bot-crossing:
+    build:
+      context: .
+    image: bot-crossing:local
+    container_name: bot-crossing
+    restart: unless-stopped
+    pid: host
+    user: "1000:1000"
+    environment:
+      # Binds inside the container; the published port below is what limits reach.
+      BOT_CROSSING_HOST: 0.0.0.0
+      PORT: 5274
+      HOME: /home/node
+      # Nothing on this box can open a desktop app, and an opener here would act on the
+      # server rather than on the device reading the colony.
+      BOT_CROSSING_NO_LAUNCH: "1"
+      # The hostname the browser actually asks for, when a proxy or tunnel sits in front.
+      BOT_CROSSING_ALLOWED_HOSTS: ${BOT_CROSSING_ALLOWED_HOSTS:-}
+    volumes:
+      - ${CLAUDE_HOME:?set CLAUDE_HOME in .env}:/home/node/.claude:ro
+      - bot-crossing-data:/app/data
+    ports:
+      # Loopback only: whatever fronts this (tailscale serve, a reverse proxy) is what
+      # decides who can reach it. Anyone who can is shown every thread title, opening
+      # prompt, working directory and branch on the machine — there is no login.
+      - "127.0.0.1:5274:5274"
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5274/api/threads').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  bot-crossing-data:
