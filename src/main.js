@@ -292,6 +292,11 @@ function select(id, { fly = false } = {}) {
   colony.astronauts.setSelected(agent)
   const thread = threads.find((t) => t.id === id) || agent.thread
   hud.setSelection(agent, thread)
+  // Picking somebody is asking what they are doing, and the answer lives in the card. With
+  // the chrome dismissed there is nowhere for that card to appear, so the tap reads as
+  // nothing happening at all — the selection is real, it is just invisible. Bring the UI
+  // back with it: dismissing is for watching the colony, not for interrogating it.
+  hud.toggleUi(true)
   // Picking somebody is also picking the zone they are standing on: the sidebar follows.
   if (thread?.project && colony.plots.has(thread.project)) selectedProject = thread.project
   syncProject()
@@ -468,7 +473,10 @@ function plotUnder(e, p) {
 engine.canvas.addEventListener('pointerup', (e) => {
   if (e.button !== 0 || !rig.wasClick) return
   const p = ndc(e)
-  const agent = colony.pick(p.x, p.y, p.aspect)
+  // The default radius (0.075 NDC) is about 15px on a phone, where a fingertip covers 40.
+  // Without widening it, hitting an astronaut by touch is a matter of luck. Hover above keeps
+  // the narrow radius: it only exists where there is a cursor, and there the aim is exact.
+  const agent = colony.pick(p.x, p.y, p.aspect, e.pointerType === 'touch' ? 0.13 : undefined)
   if (agent) {
     select(agent.id, {})
     return
