@@ -25,6 +25,12 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/server ./server
 COPY --from=build /app/package.json ./package.json
 
+# The colony file's directory has to exist in the image, owned by the user the container runs
+# as. An empty named volume takes its ownership from whatever the image has at that path, and
+# a path the image does not have at all arrives as root-owned — at which point the one file
+# this project writes cannot be written, and the map silently fails to survive a restart.
+RUN mkdir -p /app/data && chown node:node /app/data
+
 EXPOSE 5274
 USER node
 CMD ["node", "server/serve.mjs"]
