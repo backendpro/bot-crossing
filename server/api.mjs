@@ -292,6 +292,34 @@ for (const addrs of Object.values(os.networkInterfaces())) {
   }
 }
 
+// Behind a reverse proxy the address above is not what arrives. A tunnel or proxy terminates
+// the connection itself and passes the request on carrying the *name* the browser asked for
+// — `Host: box.tailnet.ts.net`, never the interface address — so every /api/* call is refused
+// and the page loads and then stays empty forever. Naming those hosts here is the only way
+// the server can tell that name apart from an attacker's. It widens nothing else: a host that
+// is not listed is still refused, and the Host + Origin pairing works exactly as before.
+//
+// Inside a container the loop above is worse than useless: the interfaces it enumerates are
+// the bridge's (172.x), which no client ever asks for.
+for (const host of (process.env.BOT_CROSSING_ALLOWED_HOSTS || '').split(',')) {
+  const trimmed = host.trim()
+  if (trimmed) LOCAL_HOSTS.add(trimmed)
+}
+
+/**
+ * Opening a thread, revealing a folder and starting a session all hand a `harness://` URL or a
+ * path to the OS opener. A headless box has nothing to hand it to — no desktop, no session bus,
+ * no terminal — and the opener would run on the *server* anyway, not on the machine whose
+ * browser is looking at the colony. Set this and those three buttons stop pretending: the API
+ * says plainly that it cannot, and `canOpen: false` greys the thread's own button out.
+ */
+const NO_LAUNCH = process.env.BOT_CROSSING_NO_LAUNCH === '1'
+
+const NO_LAUNCH_MESSAGE =
+  'This colony runs on a headless server: it has nothing to open a thread, a folder or a new ' +
+  'session with, and doing so would act on the server rather than on the machine you are ' +
+  'reading this from.'
+
 /** Hostname out of a `Host:` or `Origin:` value, with the port and any brackets stripped. */
 function hostnameOf(value) {
   if (!value) return ''
@@ -363,7 +391,8 @@ export async function apiMiddleware(req, res, next) {
 
   try {
     if (url.pathname === '/api/threads' && req.method === 'GET') {
-      const threads = await reconcileArchived(await scanThreads())
+      const scanned = await reconcileArchived(await scanThreads())
+      const threads = NO_LAUNCH ? scanned.map((t) => ({ ...t, canOpen: false })) : scanned
       // A harness that is present but cannot read its own store says so here, rather than
       // appearing healthy in the list while quietly contributing nothing.
       const warnings = (await harnessStatus()).filter((h) => h.detected && h.error).map((h) => h.error)
@@ -403,6 +432,14 @@ export async function apiMiddleware(req, res, next) {
         if (base && current.updatedAt !== base) return send(res, 409, current)
         return send(res, 200, await writeState(body))
       })
+    }
+
+    if (
+      NO_LAUNCH &&
+      req.method === 'POST' &&
+      ['/api/open', '/api/new-session', '/api/reveal'].includes(url.pathname)
+    ) {
+      return send(res, 501, { ok: false, error: NO_LAUNCH_MESSAGE })
     }
 
     if (url.pathname === '/api/open' && req.method === 'POST') {

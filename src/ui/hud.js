@@ -67,6 +67,23 @@ export class Hud {
     this.el.innerHTML = TEMPLATE
     root.appendChild(this.el)
 
+    /**
+     * The way back in, for a screen with no keyboard.
+     *
+     * Hiding the UI fades `.hud` to `opacity: 0` and kills pointer events across everything
+     * inside it — the eye button that hid it included. H and ctrl-\ are then the only way
+     * back, and a phone has neither: the only remaining move is a reload. So this one lives
+     * outside `.hud` entirely, which is also what keeps that element's own fade untouched.
+     */
+    this.unhideBtn = document.createElement('button')
+    this.unhideBtn.className = 'btn icon ghost unhide'
+    this.unhideBtn.id = 'btn-unhide'
+    this.unhideBtn.title = 'Show the UI again (H)'
+    this.unhideBtn.innerHTML = ICON.eyeOff
+    this.unhideBtn.hidden = true
+    this.unhideBtn.addEventListener('click', () => this.toggleUi(true))
+    root.appendChild(this.unhideBtn)
+
     this.$ = (sel) => this.el.querySelector(sel)
 
     this._buildStats()
@@ -777,6 +794,7 @@ export class Hud {
   toggleUi(force) {
     this.visible = force ?? !this.visible
     this.el.classList.toggle('hidden', !this.visible)
+    this.unhideBtn.hidden = this.visible
     this.$('#btn-hide').innerHTML = this.visible ? ICON.eye : ICON.eyeOff
     this.actions.uiVisibility?.(this.visible)
     if (!this.visible) this.toggleHelp(false)
